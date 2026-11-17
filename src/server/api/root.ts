@@ -1,5 +1,8 @@
+import { aiRouter } from "~/server/api/routers/ai";
 import { authRouter } from "~/server/api/routers/auth";
 import { postRouter } from "~/server/api/routers/post";
+import { projectRouter } from "~/server/api/routers/project";
+import { teamRouter } from "~/server/api/routers/team";
 import { createCallerFactory, createTRPCRouter } from "~/server/api/trpc";
 
 /**
@@ -10,6 +13,9 @@ import { createCallerFactory, createTRPCRouter } from "~/server/api/trpc";
 export const appRouter = createTRPCRouter({
   auth: authRouter,
   post: postRouter,
+  project: projectRouter,
+  team: teamRouter,
+  ai: aiRouter,
 });
 
 // export type definition of API
