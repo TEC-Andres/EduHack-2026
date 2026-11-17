@@ -1,6 +1,73 @@
 @import "tailwindcss";
 
-@theme {
-  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif,
-    "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+/* SprintLab tokens: Geist-clean neutrals + "Lab Indigo" brand + serif display. Light default, dark via system. */
+:root {
+  --bg: #fafafa;
+  --panel: #ffffff;
+  --panel-2: #f2f2f2;
+  --line: #ebebeb;
+  --fg: #171717;
+  --dim: #666666; /* 5.7:1 on white */
+  --brand: #5746e5; /* fills with white text: 6.4:1 */
+  --accent: #5746e5;
+  --accent-2: #a99fff;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #000000;
+    --panel: #0a0a0a;
+    --panel-2: #1a1a1a;
+    --line: #2e2e2e;
+    --fg: #ededed;
+    --dim: #a1a1a1; /* 7.9:1 on #0a0a0a */
+    --brand: #6657ee; /* white text: 4.9:1 */
+    --accent: #a99fff; /* text/lines on black: 8:1 */
+    --accent-2: #6657ee;
+    color-scheme: dark;
+  }
+}
+
+@theme inline {
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+  --font-display: var(--font-instrument-serif), ui-serif, Georgia, serif;
+
+  --color-bg: var(--bg);
+  --color-panel: var(--panel);
+  --color-panel-2: var(--panel-2);
+  --color-line: var(--line);
+  --color-fg: var(--fg);
+  --color-dim: var(--dim);
+  --color-brand: var(--brand);
+  --color-accent: var(--accent);
+  --color-accent-2: var(--accent-2);
+
+  --animate-fade-up: fade-up 0.25s ease-out both;
+  --animate-shimmer: shimmer 1.6s linear infinite;
+  --animate-bar: bar 1.1s ease-in-out infinite;
+
+  @keyframes fade-up {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: none; }
+  }
+  @keyframes bar {
+    0%, 100% { transform: scaleY(0.45); }
+    50% { transform: scaleY(1); }
+  }
+  @keyframes shimmer {
+    to { background-position: -200% 0; }
+  }
+}
+
+@layer base {
+  body { @apply bg-bg font-sans text-fg antialiased; }
+  :focus-visible { @apply outline-2 outline-offset-2 outline-accent; }
+}
+
+@utility card {
+  @apply rounded-lg border border-line bg-panel shadow-[0_1px_2px_rgb(0_0_0/0.04)];
+}
+@utility field {
+  @apply w-full rounded-md border border-line bg-panel px-3 py-1.5 text-sm text-fg placeholder:text-dim transition-shadow focus:border-dim focus:ring-4 focus:ring-fg/10 focus:outline-none;
 }
