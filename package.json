@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "prisma migrate deploy && next build",
+    "build": "node -e \"if(process.env.VERCEL_ENV!=='preview')require('child_process').execSync('prisma migrate deploy',{stdio:'inherit'})\" && next build",
     "db:generate": "prisma migrate dev",
     "db:migrate": "prisma migrate deploy",
     "db:push": "prisma db push",
