@@ -36,7 +36,7 @@ async function context(db: DB, projectId: number) {
     p.sprints.length && `## Sprints\n${p.sprints.map((s) => `- ${s.name}: ${s.goal}`).join("\n")}`,
     p.activities.length &&
       `## Actividades existentes\n${p.activities
-        .map((a) => `- #${a.number} [${a.status}] ${a.title} (${a.points ?? "?"} pts${a.sprint ? `, ${a.sprint.name}` : ""}${a.criterion ? `, criterio: ${a.criterion.name}` : ""})`)
+        .map((a) => `- #${a.number} [${a.status}] ${a.title} (${a.points ?? "?"} pts${a.sprint ? `, ${a.sprint.name}` : ""}${a.dueDate ? `, vence ${a.dueDate.toISOString().slice(0, 10)}` : ""}${a.criterion ? `, criterio: ${a.criterion.name}` : ""})${a.description ? `: ${a.description.slice(0, 200)}` : ""}${a.deliverable ? ` Entregable: ${a.deliverable.slice(0, 120)}` : ""}`)
         .join("\n")}`,
   ]
     .filter(Boolean)
@@ -240,35 +240,164 @@ export const skillNames = Object.keys(skills) as [SkillName, ...SkillName[]];
 
 const callArgs = z.object({ instructions: z.string().optional(), activityNumber: z.number().int().optional() });
 
-/** Free-form request: Gemini chooses which skills to call (function calling), then we run them in order. */
-export async function assistant(db: DB, projectId: number, message: string) {
+const STATUSES = ["backlog", "todo", "in_progress", "review", "done"] as const;
+const STATUS_ES = { backlog: "Backlog", todo: "Por hacer", in_progress: "En progreso", review: "En revisión", done: "Hecho" } as const;
+const day = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
+const toDate = (d?: string) => (d ? new Date(`${d}T12:00:00`) : null); // same noon convention as the activity panel
+
+const createTasksArgs = z.object({
+  tasks: z.array(z.object({
+    title: z.string().min(1).max(200),
+    description: z.string().max(2000).optional(),
+    deliverable: z.string().max(500).optional(),
+    dueDate: day.optional(),
+    priority: z.enum(PRIORITIES).optional(),
+    points: z.number().optional(),
+    status: z.enum(STATUSES).optional(),
+    sprintName: z.string().optional(),
+  })).min(1).max(15),
+});
+const moveArgs = z.object({
+  moves: z.array(z.object({
+    activityNumber: z.number().int(),
+    status: z.enum(STATUSES).optional(),
+    sprintName: z.string().optional(),
+    dueDate: day.optional(),
+  })).min(1).max(30),
+});
+
+/**
+ * Board actions: Gemini fills the arguments itself (no second model call), so voice requests apply in one round trip.
+ * Separate from `skills` because their arguments are the data, not free-form instructions.
+ */
+const actions = {
+  create_tasks: {
+    description: `Crea tarjetas nuevas en el tablero. Úsalo SOLO si el estudiante pide explícitamente agregar/agendar/anotar algo
+("agéndame", "anota", "crea", "tengo que entregar X, organízamelo"). Si solo pregunta o comenta, NO lo uses.
+Si es una entrega a varios días, NO la resuelvas: estructúrala en 3 a 8 tasks chicas (máx. ~2 h cada una), accionables,
+en orden, cada una con fecha (YYYY-MM-DD) escalonada antes de la entrega y la última = revisión final + entregar.
+Títulos cortos que empiecen con verbo. status "todo" salvo que pidan otro.`,
+    schema: createTasksArgs,
+    async run(db: DB, projectId: number, raw: unknown) {
+      const { tasks } = createTasksArgs.parse(raw);
+      const sprints = await db.sprint.findMany({ where: { projectId } });
+      const sprintId = (name?: string) => sprints.find((s) => s.name.toLowerCase() === name?.toLowerCase().trim())?.id ?? null;
+      const last = await db.activity.aggregate({ where: { projectId }, _max: { number: true, position: true } });
+      const n = last._max.number ?? 0, pos = last._max.position ?? 0;
+      await db.activity.createMany({
+        data: tasks.map((t, i) => ({
+          projectId,
+          number: n + i + 1,
+          position: pos + i + 1,
+          title: t.title,
+          description: t.description ?? "",
+          deliverable: t.deliverable ?? "",
+          priority: t.priority ?? "medium",
+          points: t.points ? fib(t.points) : null,
+          status: t.status ?? "todo",
+          dueDate: toDate(t.dueDate),
+          sprintId: sprintId(t.sprintName),
+        })),
+      });
+      const lines = tasks.map((t, i) => `#${n + i + 1} ${t.title}${t.dueDate ? ` (para el ${t.dueDate})` : ""}`);
+      return `${tasks.length === 1 ? "Agregué 1 tarea" : `Agregué ${tasks.length} tareas`}:\n${lines.join("\n")}`;
+    },
+  },
+
+  move_activities: {
+    description: `Mueve tarjetas existentes (por número) en el tablero: cambia su columna/estado, su sprint
+(sprintName exacto, o "ninguno" para quitarlo) y/o su fecha de entrega. Úsalo SOLO si pide un cambio: "ya terminé X", "pasa X a en progreso",
+"mueve X al sprint 2". Preguntas como "¿en qué estado está X?" se responden en texto, sin esta herramienta.`,
+    schema: moveArgs,
+    async run(db: DB, projectId: number, raw: unknown) {
+      const { moves } = moveArgs.parse(raw);
+      const sprints = await db.sprint.findMany({ where: { projectId } });
+      const done: string[] = [];
+      for (const m of moves) {
+        const a = await db.activity.findUnique({ where: { projectId_number: { projectId, number: m.activityNumber } } });
+        if (!a) continue;
+        const data: { status?: string; position?: number; sprintId?: number | null; dueDate?: Date | null } = {};
+        if (m.status && m.status !== a.status) {
+          const top = await db.activity.aggregate({ where: { projectId, status: m.status }, _max: { position: true } });
+          Object.assign(data, { status: m.status, position: (top._max.position ?? 0) + 1 }); // bottom of the target column
+        }
+        if (m.sprintName) {
+          const s = sprints.find((x) => x.name.toLowerCase() === m.sprintName!.toLowerCase().trim());
+          if (s || /^(ninguno|none|sin sprint)$/i.test(m.sprintName.trim())) data.sprintId = s?.id ?? null;
+        }
+        if (m.dueDate) data.dueDate = toDate(m.dueDate);
+        if (!Object.keys(data).length) continue;
+        await db.activity.update({ where: { id: a.id }, data });
+        const what = [
+          data.status && `a ${STATUS_ES[data.status as (typeof STATUSES)[number]]}`,
+          data.sprintId !== undefined && (data.sprintId ? `al ${sprints.find((x) => x.id === data.sprintId)!.name}` : "fuera de sprint"),
+          data.dueDate && `con fecha ${m.dueDate}`,
+        ].filter(Boolean).join(", ");
+        done.push(`#${a.number} ${a.title} → ${what}`);
+      }
+      return done.length ? `Moví:\n${done.join("\n")}` : "No encontré esas tarjetas, no moví nada";
+    },
+  },
+};
+type ActionName = keyof typeof actions;
+
+/** Free-form request: Gemini chooses which skills/actions to call (function calling), then we run them in order. */
+export async function assistant(db: DB, projectId: number, message: string, today = new Date().toISOString().slice(0, 10)) {
   const { text } = await context(db, projectId);
+  // saved "Guardar" transcript, newest last; only read here, when the user explicitly asks in "Responder" mode
+  const notes = (await db.voiceNote.findMany({ where: { projectId }, orderBy: { createdAt: "desc" }, take: 200 })).reverse();
+  // shortcut: keeps the most recent ~8k chars; summarize older notes if students record whole classes
+  const transcript = notes.map((n) => `[${n.createdAt.toISOString().slice(0, 16).replace("T", " ")}] ${n.text}`).join("\n").slice(-8000);
+  const weekday = new Date(`${today}T12:00:00Z`).toLocaleDateString("es-MX", { weekday: "long", timeZone: "UTC" });
   const parts = await gemini({
     systemInstruction: {
       parts: [{
-        text: `${BASE}\nTienes skills (herramientas). Para cumplir la petición llama las necesarias en orden lógico
-(expandir idea antes que rúbrica, rúbrica antes que backlog, backlog antes que sprints). Si solo es una pregunta o consejo, responde en texto breve sin herramientas.`,
+        text: `${BASE}\nHoy es ${weekday} ${today}. Eres el asistente de bolsillo del estudiante. Puede haber una "Conversación guardada"
+(lo que el estudiante grabó en clase o en su día): úsala solo si la petición la menciona o la necesita (p. ej. "convierte lo que dijo el profe en tasks").
+Primero decide si el estudiante quiere INFORMACIÓN o una ACCIÓN:
+- INFORMACIÓN (lo más común): preguntas como "¿qué tengo hoy?", "¿qué dice la #4?", "¿cuándo entrego?", "¿qué dijo el profe?",
+  "¿cómo empiezo el ensayo?". Responde en texto usando el tablero y la conversación guardada; NO llames herramientas ni cambies nada.
+  Si preguntan por una tarea, di qué pide (descripción, entregable, fecha, estado). Puedes orientar y explicar, pero nunca hagas la tarea por él.
+- ACCIÓN: solo si lo pide explícitamente (agendar, crear, mover, terminar, cambiar fecha, planear). Usa create_tasks / move_activities;
+  para planear el proyecto completo usa los skills en orden (idea → rúbrica → backlog → sprints).
+- Si menciona una entrega o examen NUEVO (que no está en el tablero) sin pedir nada, responde y pregunta "¿Quieres que la agregue al tablero?" sin usar herramientas.
+  En cualquier otro caso no ofrezcas crear tareas: solo contesta lo que preguntó.
+Responde en 1-4 frases cortas, sin markdown. Si usaste herramientas, di en una frase qué hiciste y nombra las tareas.`,
       }],
     },
-    contents: [{ role: "user", parts: [{ text: `${text}\n\n## Petición del usuario\n${message}` }] }],
+    contents: [{
+      role: "user",
+      parts: [{ text: `${text}${transcript && `\n\n## Conversación guardada (transcripción literal de voz, sin limpiar: puede tener muletillas, repeticiones y frases cortadas; hora UTC)\n${transcript}`}\n\n## Petición del usuario\n${message}` }],
+    }],
     tools: [{
-      functionDeclarations: skillNames.map((name) => ({
-        name,
-        description: skills[name].description,
-        parameters: toSchema(
-          name === "breakdown_activity"
-            ? callArgs.required({ activityNumber: true })
-            : callArgs.pick({ instructions: true }),
-        ),
-      })),
+      functionDeclarations: [
+        ...skillNames.map((name) => ({
+          name,
+          description: skills[name].description,
+          parameters: toSchema(
+            name === "breakdown_activity"
+              ? callArgs.required({ activityNumber: true })
+              : callArgs.pick({ instructions: true }),
+          ),
+        })),
+        ...Object.entries(actions).map(([name, a]) => ({ name, description: a.description, parameters: toSchema(a.schema) })),
+      ],
     }],
   });
 
-  const results: { skill: SkillName; summary: string }[] = [];
+  const results: { skill: SkillName | ActionName; summary: string }[] = [];
   for (const call of parts.flatMap((p) => (p.functionCall ? [p.functionCall] : [])).slice(0, 5)) {
-    if (!(call.name in skills)) continue;
-    const skill = call.name as SkillName;
-    results.push({ skill, summary: await skills[skill].run(db, projectId, callArgs.parse(call.args ?? {})) });
+    if (call.name in actions) {
+      const name = call.name as ActionName;
+      const summary = await actions[name].run(db, projectId, call.args ?? {}).catch((e: unknown) => {
+        if (e instanceof z.ZodError) return "Gemini mandó datos inválidos, intenta de nuevo";
+        throw e;
+      });
+      results.push({ skill: name, summary });
+    } else if (call.name in skills) {
+      const skill = call.name as SkillName;
+      results.push({ skill, summary: await skills[skill].run(db, projectId, callArgs.parse(call.args ?? {})) });
+    }
   }
   return { reply: parts.map((p) => p.text ?? "").join("").trim(), results };
 }

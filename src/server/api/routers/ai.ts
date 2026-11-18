@@ -20,9 +20,13 @@ export const aiRouter = createTRPCRouter({
 
   /** Natural-language request; Gemini decides which skills to call. */
   assistant: protectedProcedure
-    .input(z.object({ projectId: z.number().int(), message: z.string().trim().min(1).max(2000) }))
+    .input(z.object({
+      projectId: z.number().int(),
+      message: z.string().trim().min(1).max(2000),
+      today: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(), // the student's local date, so "mañana" means their tomorrow
+    }))
     .mutation(async ({ ctx, input }) => {
       await assertProject(ctx.db, ctx.user.id, input.projectId);
-      return assistant(ctx.db, input.projectId, input.message);
+      return assistant(ctx.db, input.projectId, input.message, input.today);
     }),
 });

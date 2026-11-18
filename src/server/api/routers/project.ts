@@ -2,6 +2,7 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
+import { calendarToken } from "~/server/calendar";
 import { type db as Db } from "~/server/db";
 
 export const STATUSES = ["backlog", "todo", "in_progress", "review", "done"] as const;
@@ -85,6 +86,12 @@ export const projectRouter = createTRPCRouter({
         activities: { orderBy: { position: "asc" }, include: { assignee: userSelect } },
       },
     });
+  }),
+
+  /** Secret feed path for calendar apps (Google/Apple/Outlook/Thunderbird) that can't log in. */
+  calendarFeed: protectedProcedure.input(z.number().int()).query(async ({ ctx, input }) => {
+    await assertProject(ctx.db, ctx.user.id, input);
+    return `/api/calendar/${input}?token=${calendarToken(input)}`;
   }),
 
   create: protectedProcedure.input(projectInput).mutation(async ({ ctx, input }) => {
