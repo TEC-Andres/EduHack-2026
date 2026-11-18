@@ -10,7 +10,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     headers: {
       "Content-Type": "text/calendar; charset=utf-8",
       "Cache-Control": "private, max-age=300",
-      ...(url.searchParams.has("download") && { "Content-Disposition": `attachment; filename="sprintlab-${id}.ics"` }),
+      ...(url.searchParams.has("download") && { "Content-Disposition": `attachment; filename="zensprint-${id}.ics"` }),
     },
   });
 }

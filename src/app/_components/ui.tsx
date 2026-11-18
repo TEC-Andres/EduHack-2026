@@ -158,6 +158,6 @@ export function Logo({ size = 24, animated, className }: { size?: number; animat
 
 export const Wordmark = ({ className }: { className?: string }) => (
   <span className={cn("font-display text-xl tracking-tight", className)}>
-    Sprint<em className="text-accent">Lab</em>
+    Zen<em className="text-accent">Sprint</em>
   </span>
 );
