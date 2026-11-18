@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckSquare, Loader2, Plus, Search, Send, Settings, Sparkles, Users } from "lucide-react";
+import { CheckSquare, Download, Loader2, Plus, Search, Send, Settings, Sparkles, Users } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 
@@ -8,7 +8,9 @@ import { Avatar, Button, cn, Field, Modal, Page, PRIORITY, STATUS, STATUS_KEYS, 
 import { api } from "~/trpc/react";
 import { ActivityPanel } from "./activity-panel";
 import { RubricView, SprintsView } from "./insights";
+import { SaveWidget } from "./save-widget";
 import { membersOf, useActivityOps, type Activity, type Project } from "./shared";
+import { CalendarView, GanttView } from "./views";
 
 export function ProjectView({ id }: { id: number }) {
   const q = api.project.get.useQuery(id);
@@ -18,6 +20,7 @@ export function ProjectView({ id }: { id: number }) {
   const [search, setSearch] = useState("");
   const [openNum, setOpenNum] = useState<number | null>(Number(params.get("a")) || null);
   const [settings, setSettings] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   if (q.isLoading) return <div className="grid h-[60vh] place-items-center text-dim"><Loader2 className="h-5 w-5 animate-spin" /></div>;
   if (!q.data) return <p className="mx-auto max-w-[1400px] px-6 py-8 text-sm text-dim">{q.error?.message ?? "Proyecto no encontrado"}</p>;
@@ -52,6 +55,7 @@ export function ProjectView({ id }: { id: number }) {
       actions={
         <>
           <div className="flex -space-x-2">{membersOf(p).slice(0, 5).map((m) => <Avatar key={m.id} user={m} />)}</div>
+          <Button onClick={() => setSaving(true)}><Download className="h-4 w-4" /> Guardar / widget</Button>
           <Button onClick={() => setSettings(true)}><Settings className="h-4 w-4" /> Ajustes</Button>
         </>
       }
@@ -61,7 +65,7 @@ export function ProjectView({ id }: { id: number }) {
 
       <AiBar project={p} />
 
-      {(tab === "board" || tab === "table") && (
+      {["board", "table", "calendar", "gantt"].includes(tab) && (
         <div className="flex flex-wrap items-center gap-2">
           <div className="relative flex-1 sm:max-w-xs">
             <Search className="pointer-events-none absolute top-2 left-2.5 h-4 w-4 text-dim" />
@@ -76,6 +80,8 @@ export function ProjectView({ id }: { id: number }) {
       )}
 
       {tab === "board" && <Board project={p} items={visible} sprintId={Number(sprint) || null} onOpen={setOpenNum} />}
+      {tab === "calendar" && <CalendarView project={p} items={visible} onOpen={setOpenNum} />}
+      {tab === "gantt" && <GanttView project={p} items={visible} onOpen={setOpenNum} />}
       {tab === "table" && <TableView project={p} items={visible} onOpen={setOpenNum} />}
       {tab === "rubric" && <RubricView project={p} />}
       {tab === "sprints" && <SprintsView project={p} />}
@@ -84,6 +90,7 @@ export function ProjectView({ id }: { id: number }) {
         {open && <ActivityPanel key={open.id} project={p} activity={open} onDeleted={() => setOpenNum(null)} />}
       </Modal>
       {/* mounted only while open so the form starts from fresh data */}
+      {saving && <SaveWidget project={p} open onClose={() => setSaving(false)} />}
       {settings && <ProjectSettings project={p} open onClose={() => setSettings(false)} />}
       </div>
     </Page>

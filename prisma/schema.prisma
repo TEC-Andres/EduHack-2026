@@ -24,6 +24,7 @@ model User {
     teams     TeamMember[]
     projects  Project[]
     assigned  Activity[]
+    voiceNotes VoiceNote[]
 }
 
 model Team {
@@ -59,6 +60,7 @@ model Project {
     activities       Activity[]
     sprints          Sprint[]
     criteria         RubricCriterion[]
+    voiceNotes       VoiceNote[]
 }
 
 model Sprint {
@@ -111,6 +113,19 @@ model Activity {
 
     @@unique([projectId, number])
     @@index([projectId, status])
+}
+
+// Phrases captured in "Guardar" voice mode: stored as-is, never sent to the LLM until the user asks in "Responder" mode.
+model VoiceNote {
+    id        Int      @id @default(autoincrement())
+    projectId Int
+    project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+    userId    Int
+    user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+    text      String
+    createdAt DateTime @default(now())
+
+    @@index([projectId, createdAt])
 }
 
 model Session {

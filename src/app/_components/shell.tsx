@@ -5,14 +5,18 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import { Avatar, cn, Logo, Wordmark } from "~/app/_components/ui";
+import { VoiceControl } from "~/app/_components/voice-control";
 import { api } from "~/trpc/react";
 
 const GLOBAL_TABS = [
   { href: "/", label: "Overview" },
   { href: "/teams", label: "Equipos" },
+  { href: "/voice", label: "Asistente" },
 ];
 export const PROJECT_TABS = [
-  { id: "board", label: "Tablero" },
+  { id: "board", label: "Kanban" },
+  { id: "calendar", label: "Calendario" },
+  { id: "gantt", label: "Gantt" },
   { id: "table", label: "Tabla" },
   { id: "rubric", label: "Rúbrica" },
   { id: "sprints", label: "Sprints" },
@@ -86,10 +90,12 @@ export function Shell({ children }: { children: React.ReactNode }) {
               </details>
             </>
           )}
+          <div className="ml-auto" />
+          <VoiceControl projectId={projectId ? Number(projectId) : undefined} />
           <button
             onClick={() => logout.mutate()}
             disabled={logout.isPending}
-            className="ml-auto flex items-center gap-1.5 rounded-md px-2 py-1 text-sm text-dim hover:bg-panel-2 hover:text-fg"
+            className="flex items-center gap-1.5 rounded-md px-2 py-1 text-sm text-dim hover:bg-panel-2 hover:text-fg"
           >
             <LogOut className="h-4 w-4" /> <span className="hidden sm:inline">Salir</span>
           </button>
