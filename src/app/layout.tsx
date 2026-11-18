@@ -9,7 +9,7 @@ import { TRPCReactProvider } from "~/trpc/react";
 import { api, HydrateClient } from "~/trpc/server";
 
 export const metadata: Metadata = {
-  title: "SprintLab — proyectos con IA",
+  title: "ZenSprint — proyectos con IA",
   description: "Gestión de proyectos académicos con Scrum, rúbricas y Gemini",
 };
 

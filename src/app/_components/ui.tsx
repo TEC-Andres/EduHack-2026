@@ -134,7 +134,7 @@ export function Page({ title, description, actions, children }: { title: React.R
 
 const BARS = [[8, 17, 8], [14, 12, 13], [20, 7, 18]] as const; // x, y, height: three rising sprints
 
-/** SprintLab mark; `animated` makes the bars pulse (loading states). */
+/** ZenSprint mark; `animated` makes the bars pulse (loading states). */
 export function Logo({ size = 24, animated, className }: { size?: number; animated?: boolean; className?: string }) {
   return (
     <svg viewBox="0 0 32 32" width={size} height={size} className={cn("shrink-0", className)} aria-hidden>
@@ -158,6 +158,6 @@ export function Logo({ size = 24, animated, className }: { size?: number; animat
 
 export const Wordmark = ({ className }: { className?: string }) => (
   <span className={cn("font-display text-xl tracking-tight", className)}>
-    Sprint<em className="text-accent">Lab</em>
+    Zen<em className="text-accent">Sprint</em>
   </span>
 );

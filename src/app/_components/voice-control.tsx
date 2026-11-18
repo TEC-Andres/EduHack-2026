@@ -12,7 +12,7 @@ const MODES: { id: Mode; label: string; hint: string }[] = [
   { id: "respond", label: "Responder", hint: "Solo texto: escribes tu petición y Gemini responde por escrito." },
 ];
 
-/** Header voice menu: prefs (cookies), plus the background mic loop for "Hey SprintLab" and "Guardar" capture. */
+/** Header voice menu: prefs (cookies), plus the background mic loop for "Hey ZenSprint" and "Guardar" capture. */
 export function VoiceControl({ projectId }: { projectId?: number }) {
   const prefs = usePrefs();
   const supported = useSpeechSupported();
@@ -24,7 +24,7 @@ export function VoiceControl({ projectId }: { projectId?: number }) {
   const status = awake
     ? "Te escucho… di tu petición"
     : listening
-      ? saving ? "Guardando conversación" + (prefs.hotword ? " · di “Hey SprintLab”" : "") : "Esperando “Hey SprintLab”"
+      ? saving ? "Guardando conversación" + (prefs.hotword ? " · di “Hey ZenSprint”" : "") : "Esperando “Hey ZenSprint”"
       : "Micrófono apagado";
 
   return (
@@ -48,10 +48,10 @@ export function VoiceControl({ projectId }: { projectId?: number }) {
         <label className="flex items-start gap-2">
           <input type="checkbox" className="mt-0.5" checked={prefs.hotword} disabled={!supported} onChange={(e) => setPrefs({ hotword: e.target.checked })} />
           <span>
-            Activar con “Hey SprintLab”
+            Activar con “Hey ZenSprint”
             <span className="block text-xs text-dim">
               {supported
-                ? "Escucha en cualquier página. Di “Hey SprintLab, ¿qué tengo hoy?” y se abre Responder con tu petición escrita, lista para enviar."
+                ? "Escucha en cualquier página. Di “Hey ZenSprint, ¿qué tengo hoy?” y se abre Responder con tu petición escrita, lista para enviar."
                 : "Este navegador no soporta reconocimiento de voz (usa Chrome o Safari)."}
             </span>
           </span>

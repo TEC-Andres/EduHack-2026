@@ -18,7 +18,7 @@ export function Voice() {
   const projects = api.project.list.useQuery();
   const [projectId, setProjectId] = useState<number | null>(null);
   const { mode } = usePrefs();
-  const params = useSearchParams(); // set by "Hey SprintLab": ?project=<id>&ask=<what was said after the hotword>
+  const params = useSearchParams(); // set by "Hey ZenSprint": ?project=<id>&ask=<what was said after the hotword>
   const ask = params.get("ask") ?? "";
 
   // remembered project, else the most recent one
@@ -110,7 +110,7 @@ function SaveMode({ projectId }: { projectId: number }) {
           <div className="pt-8 text-center">
             <p className="font-display text-2xl">Modo Guardar</p>
             <p className="mt-1 text-sm text-dim">
-              Graba tu clase o tus ideas. Solo se transcribe y guarda; no responde. Di “Hey SprintLab, …” o cambia a Responder para pedirle algo por escrito.
+              Graba tu clase o tus ideas. Solo se transcribe y guarda; no responde. Di “Hey ZenSprint, …” o cambia a Responder para pedirle algo por escrito.
             </p>
           </div>
         )}

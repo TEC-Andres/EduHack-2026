@@ -56,7 +56,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
     <div className="min-h-dvh">
       <header className="sticky top-0 z-30 border-b border-line bg-panel/80 backdrop-blur-md">
         <div className="flex h-16 items-center gap-1 px-4 md:px-6">
-          <Link href="/" aria-label="SprintLab, inicio" className="mr-1 flex items-center gap-2">
+          <Link href="/" aria-label="ZenSprint, inicio" className="mr-1 flex items-center gap-2">
             <Logo size={26} />
             <Wordmark className="hidden md:inline" />
           </Link>

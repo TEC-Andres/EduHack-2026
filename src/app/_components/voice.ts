@@ -10,10 +10,11 @@ export type Recognition = {
   lang: string;
   interimResults: boolean;
   continuous: boolean;
+  maxAlternatives: number;
   start(): void;
   stop(): void;
   abort(): void;
-  onresult: (e: { resultIndex: number; results: ArrayLike<{ 0: { transcript: string }; isFinal: boolean }> }) => void;
+  onresult: (e: { resultIndex: number; results: ArrayLike<ArrayLike<{ transcript: string }> & { isFinal: boolean }> }) => void;
   onend: () => void;
   onerror: (e: { error: string }) => void;
 };
@@ -32,7 +33,7 @@ export function getRecognition() {
  * mode: "save" = transcribe and store, never answer; "respond" = typed requests to Gemini, text replies.
  * listen: keep the mic on in project pages while in "save" mode.
  * speak: read assistant replies aloud on /voice.
- * hotword: listen for "Hey SprintLab" on every page (without saving anything unless listen is also on).
+ * hotword: listen for "Hey ZenSprint" on every page (without saving anything unless listen is also on).
  */
 export type Mode = "save" | "respond";
 export type Prefs = { mode: Mode; listen: boolean; speak: boolean; hotword: boolean };
@@ -84,13 +85,14 @@ export const useSpeechSupported = () => {
 };
 
 /**
- * "Hey SprintLab" (also "Oye SprintLab"), tolerant of how es-MX recognizers spell it:
- * "hay/ey/jey/eh" for "Hey", and "sprint lab" / "spring lab" / "es print lap" / "sprintlab" for the name.
+ * "Hey ZenSprint" (also "Oye ZenSprint"), tolerant of how es-MX recognizers spell it:
+ * "hay/ey/jey/eh/ay" for "Hey" (also glued on: "heysen", "aisen"), and for the name:
+ * zen/sen/cen/sem/send/sin + sprint/esprint/es print/se print/sprin/spring/print/prin, spaced or glued ("sensprint").
  * A greeting is required so just saying the app's name in conversation doesn't trigger it.
  */
 export const HOTWORD =
-  /(?:^|[^\p{L}])(?:hey|hei|hay|ey|ei|eh|jey|jei|oye|oigan?|ok|okay)[\s,.!¡?¿]*(?:e?s\s?)?(?:sprint|spring|print|esprint)\s*-?\s*la(?:b|p|v|bs)(?![\p{L}])[\s,.!:?]*/iu;
-const AWAKE_MS = 6000; // after a bare "Hey SprintLab", how long the next phrase counts as the request
+  /(?:^|[^\p{L}])(?:hey|hei|hay|ey|ei|eh|he|jey|jei|ay|ai|oye|oigan?|ok|okay|okey)[\s,.!¡?¿]*[zsc][eéi][nmñ][dts]?[\s\-'’.]*(?:e?s[\s\-]?|se\s)?e?s?pr[ií]n[gtk]?s?(?![\p{L}])[\s,.!:?]*/iu;
+const AWAKE_MS = 6000; // after a bare "Hey ZenSprint", how long the next phrase counts as the request
 // Watchdog: the browser's recognizer degrades in long or noisy sessions, so we refresh it before it drops words.
 const NOISE_MS = 12_000; // a phrase that never finalizes = noise keeps the recognizer from detecting a pause
 const STALL_MS = 20_000; // no events at all = the service froze silently (restarting during real silence loses nothing)
@@ -99,7 +101,7 @@ const STOP_GRACE_MS = 1500; // stop() normally finalizes and fires onend; abort 
 
 /**
  * Mic loop. While `on`, listens for the hotword; with `save`, also stores every other final phrase as a VoiceNote
- * (no Gemini involved). "Hey SprintLab, <petición>" switches to Responder and opens /voice with the request typed in,
+ * (no Gemini involved). "Hey ZenSprint, <petición>" switches to Responder and opens /voice with the request typed in,
  * ready to send (Responder is typed-only, so nothing reaches Gemini until the student hits send).
  */
 export function useCapture({ projectId, on, save }: { projectId?: number; on: boolean; save: boolean }) {
@@ -185,6 +187,7 @@ export function useCapture({ projectId, on, save }: { projectId?: number; on: bo
       rec = r;
       r.continuous = true;
       r.interimResults = true;
+      r.maxAlternatives = 4; // the made-up name is often only in the 2nd/3rd guess ("sen print" on top)
       r.onresult = (e) => {
         if (rec !== r) return; // late event from a session we already replaced
         lastEvent = Date.now();
@@ -192,15 +195,17 @@ export function useCapture({ projectId, on, save }: { projectId?: number; on: bo
         setError(null);
         let interim = "";
         for (let i = e.resultIndex; i < e.results.length; i++) {
-          const text = e.results[i]![0].transcript.trim(); // edge whitespace only; the words stay as heard
+          const text = e.results[i]![0]!.transcript.trim(); // edge whitespace only; the words stay as heard
           if (!e.results[i]!.isFinal) { interim += text + " "; continue; }
           if (!text) continue;
           setHeard(text);
           store(text);
           if (Date.now() < awakeUntil) return wake(text);
-          const m = HOTWORD.exec(text);
-          if (!m) continue;
-          const command = text.slice(m.index + m[0].length).trim();
+          const hit = Array.from(e.results[i]!, (a) => a.transcript.trim())
+            .map((t) => ({ t, m: HOTWORD.exec(t) }))
+            .find((x) => x.m);
+          if (!hit) continue;
+          const command = hit.t.slice(hit.m!.index + hit.m![0].length).trim();
           if (command) return wake(command);
           awakeUntil = Date.now() + AWAKE_MS;
           setAwake(true);

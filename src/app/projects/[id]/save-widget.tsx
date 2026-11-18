@@ -81,7 +81,7 @@ export function SaveWidget({ project, open, onClose }: { project: Project; open:
             <ul className="list-disc space-y-1 pl-5 text-dim">
               <li className={cn(ios && "text-fg")}><b>iPhone / iPad (Safari):</b> Compartir <span aria-hidden>⎋</span> → “Añadir a pantalla de inicio”.</li>
               <li><b>Android (Chrome):</b> menú ⋮ → “Instalar app” o “Añadir a pantalla de inicio”.</li>
-              <li><b>Windows / Linux / macOS (Chrome, Edge):</b> icono de instalar en la barra de direcciones, o menú → “Instalar SprintLab”.</li>
+              <li><b>Windows / Linux / macOS (Chrome, Edge):</b> icono de instalar en la barra de direcciones, o menú → “Instalar ZenSprint”.</li>
               <li><b>macOS (Safari):</b> Archivo → “Añadir al Dock”.</li>
             </ul>
           )}

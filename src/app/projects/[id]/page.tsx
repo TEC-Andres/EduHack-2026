@@ -13,9 +13,9 @@ export async function generateMetadata({ params, searchParams }: { params: Promi
   const view = VIEWS.includes(tab) ? tab : "board";
   const project = Number.isInteger(id) ? await api.project.get(id).catch(() => null) : null;
   return {
-    title: project ? `${project.name} — SprintLab` : "SprintLab",
-    manifest: `/api/manifest?project=${id}&view=${view}&name=${encodeURIComponent(project?.name ?? "SprintLab")}`,
-    appleWebApp: { capable: true, title: project?.name ?? "SprintLab", statusBarStyle: "default" },
+    title: project ? `${project.name} — ZenSprint` : "ZenSprint",
+    manifest: `/api/manifest?project=${id}&view=${view}&name=${encodeURIComponent(project?.name ?? "ZenSprint")}`,
+    appleWebApp: { capable: true, title: project?.name ?? "ZenSprint", statusBarStyle: "default" },
     icons: { apple: "/api/pwa-icon?s=180" },
   };
 }

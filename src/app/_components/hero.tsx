@@ -48,7 +48,7 @@ export function Hero() {
               Del enunciado al entregable, <em className="text-accent">sprint a sprint</em>.
             </h1>
             <p className="mt-5 max-w-xl text-lg text-dim">
-              SprintLab convierte la rúbrica de tu proyecto en un plan de trabajo real: actividades claras, sprints semanales y un tablero
+              ZenSprint convierte la rúbrica de tu proyecto en un plan de trabajo real: actividades claras, sprints semanales y un tablero
               compartido con tu equipo. Menos tiempo organizando, más tiempo construyendo.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">

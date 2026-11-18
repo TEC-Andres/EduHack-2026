@@ -5,7 +5,7 @@ export function GET(req: Request) {
   const q = new URL(req.url).searchParams;
   const project = Number(q.get("project"));
   const view = (q.get("view") ?? "board") as keyof typeof VIEWS;
-  const name = (q.get("name") ?? "SprintLab").slice(0, 60);
+  const name = (q.get("name") ?? "ZenSprint").slice(0, 60);
   if (!Number.isInteger(project) || !(view in VIEWS)) return new Response("Bad request", { status: 400 });
   const icon = (s: number) => ({ src: `/api/pwa-icon?s=${s}`, sizes: `${s}x${s}`, type: "image/png", purpose: "any" });
   return Response.json(
