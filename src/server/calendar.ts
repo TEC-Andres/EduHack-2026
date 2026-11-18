@@ -47,10 +47,10 @@ export async function projectIcs(projectId: number, baseUrl: string) {
   const lines = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//SprintLab//ES",
+    "PRODID:-//ZenSprint//ES",
     "CALSCALE:GREGORIAN",
     "METHOD:PUBLISH",
-    `X-WR-CALNAME:${esc(`SprintLab · ${p.name}`)}`,
+    `X-WR-CALNAME:${esc(`ZenSprint · ${p.name}`)}`,
     "REFRESH-INTERVAL;VALUE=DURATION:PT1H",
     "X-PUBLISHED-TTL:PT1H",
     ...p.sprints.flatMap((s) => event(`sprint-${s.id}`, s.startDate, new Date(s.endDate.getTime() - 86_400_000), // sprint endDate is exclusive (start + N days)

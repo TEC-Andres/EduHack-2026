@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-/* SprintLab tokens: Geist-clean neutrals + "Lab Indigo" brand + serif display. Light default, dark via system. */
+/* ZenSprint tokens: Geist-clean neutrals + "Lab Indigo" brand + serif display. Light default, dark via system. */
 :root {
   --bg: #fafafa;
   --panel: #ffffff;
